@@ -14,7 +14,7 @@ import org.apache.flink.util.Collector;
 
 import java.time.Duration;
 
-public class KeyedValueStateDemo {
+public class KeyedVauleStateDemo {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);

@@ -3,6 +3,8 @@ package com.w36.state;
 import com.w36.bean.WaterSensor;
 import com.w36.function.WaterSensorMapFunction;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -13,8 +15,10 @@ import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
-public class KeyedValueStateDemo {
+public class KeyedListStateDemo {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
@@ -29,23 +33,29 @@ public class KeyedValueStateDemo {
                 .process(
                         new KeyedProcessFunction<String, WaterSensor, String>() {
 
-                            ValueState<Integer> lastVcState;
+                            ListState<Integer> vcListState;
 
                             @Override
                             public void open(Configuration parameters) throws Exception {
                                 super.open(parameters);
-                                // 状态描述器
-                                lastVcState = getRuntimeContext().getState(new ValueStateDescriptor<Integer>("lastVcState", Types.INT));
+                                vcListState = getRuntimeContext().getListState(new ListStateDescriptor<Integer>("vcListState", Types.INT));
                             }
 
                             @Override
                             public void processElement(WaterSensor waterSensor, KeyedProcessFunction<String, WaterSensor, String>.Context context, Collector<String> collector) throws Exception {
-                                int lastVc = lastVcState.value() == null ? 0 : lastVcState.value();
-                                Integer vc = waterSensor.getVc();
-                                if (Math.abs(vc - lastVc) > 10) {
-                                    collector.collect("NOW：" + vc + ",LAST：" + lastVc);
+
+                                vcListState.add(waterSensor.getVc());
+                                Iterable<Integer> vcListIt = vcListState.get();
+                                List<Integer> vcList = new ArrayList<>();
+                                for (Integer vc : vcListIt) {
+                                    vcList.add(vc);
                                 }
-                                lastVcState.update(vc);
+                                vcList.sort((o1, o2) -> o2 - o1);
+                                if (vcList.size() > 3) {
+                                    vcList.remove(3);
+                                }
+                                collector.collect("Top3：" + vcList.toString());
+                                vcListState.update(vcList);
                             }
                         }
                 )
