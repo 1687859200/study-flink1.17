@@ -10,9 +10,9 @@ import org.apache.flink.util.Collector;
 
 public class FlinkWordCountUnbounded {
     public static void main(String[] args) throws Exception {
-//        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
-        env.setParallelism(2);
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+//        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
+        env.setParallelism(1);
 
         DataStreamSource<String> lines = env.socketTextStream("106.15.42.75", 7777);
         SingleOutputStreamOperator<Tuple2<String, Integer>> sum = lines
