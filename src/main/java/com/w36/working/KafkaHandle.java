@@ -78,7 +78,7 @@ public class KafkaHandle {
                         .withUrl("jdbc:mysql://10.252.21.17:9030/ads")
                         .withUsername("root")
                         .withPassword("z4mit@aiko")
-                        .withConnectionCheckTimeoutSeconds(60)
+                        .withConnectionCheckTimeoutSeconds(30)
                         .build()
         ));
 
