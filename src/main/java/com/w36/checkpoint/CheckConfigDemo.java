@@ -20,7 +20,7 @@ public class CheckConfigDemo {
         env.enableCheckpointing(5000, CheckpointingMode.EXACTLY_ONCE);
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
         // 指定检查点的存储位置
-        checkpointConfig.setCheckpointStorage("input/chk");
+        checkpointConfig.setCheckpointStorage("file:///input/chk");
         // 超时时间，默认10分钟
         checkpointConfig.setCheckpointTimeout(60000);
         // 同时运行的checkpoint最大数量
@@ -28,7 +28,10 @@ public class CheckConfigDemo {
         // 最小等待间隔
         checkpointConfig.setMinPauseBetweenCheckpoints(1000);
         // 取消作业时，checkpoint的数据是否保留在外部系统
-        checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION);
+        checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+        // Todo 非对齐检查点
+        // 开启之后自动设为 精准一次，并发为1
+        checkpointConfig.enableUnalignedCheckpoints();
 
         env.socketTextStream("106.15.42.75", 7777)
                 .flatMap(
