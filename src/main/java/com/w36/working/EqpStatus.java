@@ -5,10 +5,15 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -22,6 +27,7 @@ public class EqpStatus {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
+        env.enableCheckpointing(2000, CheckpointingMode.EXACTLY_ONCE);
 
         KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
                 .setBootstrapServers("10.252.24.5:9092,10.252.24.6:9092,10.252.24.7:9092,10.252.24.8:9092,10.252.24.9:9092")
@@ -33,6 +39,21 @@ public class EqpStatus {
 
         HashMap<String, List<String>> hashMap = new HashMap<>();
         String timeGuard = LocalDate.now().toString() + " 08:00:00";
+
+        KafkaSink<String> sink = KafkaSink.<String>builder()
+                .setBootstrapServers("10.252.24.5:9092,10.252.24.6:9092,10.252.24.7:9092,10.252.24.8:9092,10.252.24.9:9092")
+                .setRecordSerializer(
+                        KafkaRecordSerializationSchema.<String>builder()
+                                .setTopic("das-collection-eqp-status-sec")
+                                .setValueSerializationSchema(new SimpleStringSchema())
+                                .build()
+                )
+                .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
+                // 如果是精准一次，必须设置事务的前缀
+                .setTransactionalIdPrefix("w36-")
+                // 如果是精准一次 必须设置 事务超时时间
+                .setProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 10*60*100+"")
+                .build();
 
         env.fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "KafkaSource")
                 .flatMap(new FlatMapFunction<String, String>() {
@@ -68,8 +89,7 @@ public class EqpStatus {
                         list.add(time);
                         hashMap.put(eqpID, list);
                     }
-                })
-                .print();
+                }).sinkTo(sink);
 
         env.execute();
     }
