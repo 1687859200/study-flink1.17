@@ -10,6 +10,10 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +32,7 @@ public class EqpStatus {
                 .build();
 
         HashMap<String, List<String>> hashMap = new HashMap<>();
+        String timeGuard = LocalDate.now().toString() + " 08:00:00";
 
         env.fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "KafkaSource")
                 .flatMap(new FlatMapFunction<String, String>() {
@@ -38,15 +43,25 @@ public class EqpStatus {
                         String time = jsonObject.get("Puttime").toString();
                         JSONObject data = jsonObject.getJSONObject("Data");
                         String eqpStatus = data.get("EqpStatus").toString();
-                        if(hashMap.containsKey(eqpID)){
+                        if (hashMap.containsKey(eqpID)) {
                             jsonObject.remove("Data");
                             jsonObject.remove("Puttime");
                             String status = hashMap.get(eqpID).get(0);
                             String start_time = hashMap.get(eqpID).get(1);
-                            jsonObject.put("Status", status);
-                            jsonObject.put("start_time", start_time);
-                            jsonObject.put("end_time", time);
-                            collector.collect(jsonObject.toString());
+                            if (time.compareTo(timeGuard) > 0 && start_time.compareTo(timeGuard) < 0) {
+                                ArrayList<ArrayList<String>> arrayLists = dateCut(start_time, time);
+                                jsonObject.put("Status", status);
+                                for (ArrayList<String> arrayList : arrayLists) {
+                                    jsonObject.put("start_time", arrayList.get(0));
+                                    jsonObject.put("end_time", arrayList.get(1));
+                                    collector.collect(jsonObject.toString());
+                                }
+                            } else {
+                                jsonObject.put("Status", status);
+                                jsonObject.put("start_time", start_time);
+                                jsonObject.put("end_time", time);
+                                collector.collect(jsonObject.toString());
+                            }
                         }
                         ArrayList<String> list = new ArrayList<>();
                         list.add(eqpStatus);
@@ -57,5 +72,30 @@ public class EqpStatus {
                 .print();
 
         env.execute();
+    }
+
+    public static ArrayList<ArrayList<String>> dateCut(String start, String end) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime startTime = LocalDateTime.parse(start, formatter);
+        LocalDateTime endTime = LocalDateTime.parse(end, formatter);
+        ArrayList<ArrayList<String>> result = new ArrayList<>();
+        long days = Duration.between(startTime, endTime).toDays();
+        String part = " 08:00:00";
+        for (long l = 0; l < days + 2; l++) {
+            LocalDateTime plus = startTime.plusDays(l);
+            String tmp = plus.toLocalDate().toString() + part;
+            if (start.compareTo(tmp) < 0 && end.compareTo(tmp) > 0) {
+                ArrayList<String> list = new ArrayList<>();
+                list.add(start);
+                list.add(tmp);
+                start = tmp;
+                result.add(list);
+            }
+        }
+        ArrayList<String> list1 = new ArrayList<>();
+        list1.add(start);
+        list1.add(end);
+        result.add(list1);
+        return result;
     }
 }
