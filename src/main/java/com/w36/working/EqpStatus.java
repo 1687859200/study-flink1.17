@@ -50,9 +50,10 @@ public class EqpStatus {
                 )
                 .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 // 如果是精准一次，必须设置事务的前缀
-                .setTransactionalIdPrefix("w36-")
+                // 事务前缀需跟换，一直使用一个可能存在冲突无法写入
+                .setTransactionalIdPrefix("w36-24-4-23-")
                 // 如果是精准一次 必须设置 事务超时时间
-                .setProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 10*60*100+"")
+                .setProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 10 * 60 * 100 + "")
                 .build();
 
         env.fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "KafkaSource")
@@ -89,7 +90,9 @@ public class EqpStatus {
                         list.add(time);
                         hashMap.put(eqpID, list);
                     }
-                }).sinkTo(sink);
+                })
+                .sinkTo(sink);
+//                .print();
 
         env.execute();
     }
