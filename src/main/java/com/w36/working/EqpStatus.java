@@ -26,7 +26,6 @@ import java.util.List;
 public class EqpStatus {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
         env.enableCheckpointing(2000, CheckpointingMode.EXACTLY_ONCE);
 
         KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
@@ -51,7 +50,7 @@ public class EqpStatus {
                 .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 // 如果是精准一次，必须设置事务的前缀
                 // 事务前缀需跟换，一直使用一个可能存在冲突无法写入
-                .setTransactionalIdPrefix("w36-24-4-23-")
+                .setTransactionalIdPrefix("w36-24-4-23-14-")
                 // 如果是精准一次 必须设置 事务超时时间
                 .setProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 10 * 60 * 100 + "")
                 .build();
