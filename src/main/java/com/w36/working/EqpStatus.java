@@ -37,7 +37,7 @@ public class EqpStatus {
                 .build();
 
         HashMap<String, List<String>> hashMap = new HashMap<>();
-        String timeGuard = LocalDate.now().toString() + " 08:00:00";
+
 
         KafkaSink<String> sink = KafkaSink.<String>builder()
                 .setBootstrapServers("10.252.24.5:9092,10.252.24.6:9092,10.252.24.7:9092,10.252.24.8:9092,10.252.24.9:9092")
@@ -69,6 +69,7 @@ public class EqpStatus {
                             jsonObject.remove("Puttime");
                             String status = hashMap.get(eqpID).get(0);
                             String start_time = hashMap.get(eqpID).get(1);
+                            String timeGuard = LocalDate.now().toString() + " 08:00:00";
                             if (time.compareTo(timeGuard) > 0 && start_time.compareTo(timeGuard) < 0) {
                                 ArrayList<ArrayList<String>> arrayLists = dateCut(start_time, time);
                                 jsonObject.put("Status", status);
